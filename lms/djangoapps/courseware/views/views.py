@@ -1078,9 +1078,7 @@ def dates(request, course_id):
     user_timezone = user_timezone_locale['user_timezone']
     user_language = user_timezone_locale['user_language']
 
-    display_reset_dates_text = False
-    if RELATIVE_DATES_FLAG.is_enabled(course.id):
-        display_reset_dates_text = reset_deadlines_banner_should_display(course_key, request)
+    display_reset_dates_text = reset_deadlines_banner_should_display(course_key, request)
 
     context = {
         'course': course,

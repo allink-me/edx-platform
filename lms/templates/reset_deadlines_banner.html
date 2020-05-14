@@ -3,23 +3,38 @@
 <%page expression_filter="h"/>
 <%!
 from django.utils.translation import ugettext as _
+
+from course_modes.models import CourseMode
 %>
-<div class="reset-deadlines-banner">
-    <div class="reset-deadlines-text">
+<div class="dates-banner">
+    <div class="dates-banner-text banner-has-button">
         % if web_app_course_url:
             ${_("It looks like you've missed some important deadlines. Visit ")}
             <a href="${web_app_course_url}">${_("edx.org")}</a>
             ${_(" to reset your deadlines and get started today.")}
         % else:
-            ${_("It looks like you've missed some important deadlines. Reset your deadlines and get started today.")}
+            % if enrollment_mode == CourseMode.VERIFIED:
+                <strong>${_('It looks like you missed some important deadlines based on our suggested schedule.')}</strong>
+                ${_('To keep yourself on track, you can update this schedule and shift the past due assignments into the future. Don’t worry—you won’t lose any of the progress you’ve made when you shift your due dates.')}
+            % else:
+                <strong>${_('You are auditing this course,')}</strong>
+                ${_(' which means that you are unable to participate in graded assignments.')}
+                ${_(' It looks like you missed some important deadlines based on our suggested schedule. To complete graded assignments as part of this course and shift the past due assignments into the future, you can upgrade today.')}
+            % endif
         % endif
     </div>
     % if not web_app_course_url:
-        <form method="post" action="${reset_deadlines_url}">
-            <input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="${csrf_token}">
-            <input type="hidden" name="reset_deadlines_redirect_url_base" value="${reset_deadlines_redirect_url_base}">
-            <input type="hidden" name="reset_deadlines_redirect_url_id_dict" value="${reset_deadlines_redirect_url_id_dict}">
-            <button class="btn reset-deadlines-button">${_("Reset my deadlines")}</button>
-        </form>
+        <div class="upgrade-button">
+            % if enrollment_mode == CourseMode.VERIFIED:
+                <form method="post" action="${reset_deadlines_url}">
+                    <input type="hidden" id="csrf_token" name="csrfmiddlewaretoken" value="${csrf_token}">
+                    <input type="hidden" name="reset_deadlines_redirect_url_base" value="${reset_deadlines_redirect_url_base}">
+                    <input type="hidden" name="reset_deadlines_redirect_url_id_dict" value="${reset_deadlines_redirect_url_id_dict}">
+                    <button class="btn reset-deadlines-button">${_("Reset my deadlines")}</button>
+                </form>
+            % else:
+                 <a href="${verified_upgrade_link}"><button type="button">${_('Upgrade to shift due dates')}</button></a>
+            % endif
+        </div>
     % endif
 </div>

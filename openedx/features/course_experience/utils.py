@@ -17,6 +17,7 @@ from lms.djangoapps.course_blocks.utils import get_student_module_as_dict
 from lms.djangoapps.courseware.access import has_access
 from openedx.core.djangoapps.content.course_overviews.models import CourseOverview
 from openedx.core.lib.cache_utils import request_cached
+from openedx.features.course_experience import RELATIVE_DATES_FLAG
 from student.models import CourseEnrollment
 from xmodule.modulestore.django import modulestore
 
@@ -260,31 +261,32 @@ def reset_deadlines_banner_should_display(course_key, request):
     incomplete sequentials
     """
     display_reset_dates_banner = False
-    course_overview = CourseOverview.objects.get(id=str(course_key))
-    course_end_date = getattr(course_overview, 'end_date', None)
-    is_self_paced = getattr(course_overview, 'self_paced', False)
-    is_course_staff = bool(
-        request.user and course_overview and has_access(request.user, 'staff', course_overview, course_overview.id)
-    )
-    if is_self_paced and (not is_course_staff) and (not course_end_date or timezone.now() < course_end_date):
-        if CourseEnrollment.objects.filter(
-            course=course_overview, user=request.user,
-        ).filter(
-            Q(mode=CourseMode.AUDIT) | Q(mode=CourseMode.VERIFIED)
-        ).exists():
-            course_block_tree = get_course_outline_block_tree(
-                request, str(course_key), request.user
-            )
-            course_sections = course_block_tree.get('children', [])
-            for section in course_sections:
-                if display_reset_dates_banner:
-                    break
-                for subsection in section.get('children', []):
-                    if (
-                        not subsection.get('complete', True)
-                        and subsection.get('graded', False)
-                        and subsection.get('due', timezone.now() + timedelta(1)) < timezone.now()
-                    ):
-                        display_reset_dates_banner = True
+    if RELATIVE_DATES_FLAG.is_enabled(str(course_key)):
+        course_overview = CourseOverview.objects.get(id=str(course_key))
+        course_end_date = getattr(course_overview, 'end_date', None)
+        is_self_paced = getattr(course_overview, 'self_paced', False)
+        is_course_staff = bool(
+            request.user and course_overview and has_access(request.user, 'staff', course_overview, course_overview.id)
+        )
+        if is_self_paced and (is_course_staff) and (not course_end_date or timezone.now() < course_end_date):
+            if CourseEnrollment.objects.filter(
+                course=course_overview, user=request.user,
+            ).filter(
+                Q(mode=CourseMode.AUDIT) | Q(mode=CourseMode.VERIFIED)
+            ).exists():
+                course_block_tree = get_course_outline_block_tree(
+                    request, str(course_key), request.user
+                )
+                course_sections = course_block_tree.get('children', [])
+                for section in course_sections:
+                    if display_reset_dates_banner:
                         break
+                    for subsection in section.get('children', []):
+                        if (
+                            not subsection.get('complete', True)
+                            and subsection.get('graded', False)
+                            and subsection.get('due', timezone.now() + timedelta(1)) < timezone.now()
+                        ):
+                            display_reset_dates_banner = True
+                            break
     return display_reset_dates_banner
